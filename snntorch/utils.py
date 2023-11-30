@@ -4,8 +4,7 @@ import snntorch as snn
 
 
 def data_subset(dataset, subset, idx=0):
-    """Partition the dataset by a factor of ``1/subset``
-    without removing access to data and target attributes.
+    """Partition the dataset by a factor of ``1/subset`` without removing access to data and target attributes.
 
     Example::
 
@@ -31,13 +30,11 @@ def data_subset(dataset, subset, idx=0):
     :param subset: Factor to reduce dataset by
     :type subset: int
 
-    :param idx: Which subset of the train and test sets to index into,
-        defaults to ``0``
+    :param idx: Which subset of the train and test sets to index into, defaults to ``0``
     :type idx: int, optional
 
     :return: Partitioned dataset
     :rtype: list of torch.utils.data
-
     """
 
     if subset > 1:
@@ -57,10 +54,8 @@ def data_subset(dataset, subset, idx=0):
 
 
 def valid_split(ds_train, ds_val, split, seed=0):
-    """Randomly split a dataset into non-overlapping
-    new datasets of given lengths.
-    Optionally fix the generator for reproducible results.
-    Operates similarly to ``random_split`` from
+    """Randomly split a dataset into non-overlapping new datasets of given lengths.
+    Optionally fix the generator for reproducible results. Operates similarly to ``random_split`` from
     ``torch.utils.data.dataset`` but retains data and target attributes.
 
     Example ::
@@ -82,8 +77,7 @@ def valid_split(ds_train, ds_val, split, seed=0):
         >>> 60000
 
         #  Validation split
-        mnist_train, mnist_val = utils.valid_split(mnist_train,
-        mnist_val, val_split)
+        mnist_train, mnist_val = utils.valid_split(mnist_train, mnist_val, val_split)
 
         print(len(mnist_train))
         >>> 54000
@@ -97,8 +91,7 @@ def valid_split(ds_train, ds_val, split, seed=0):
     :param ds_val: Validation set
     :type ds_val: torchvision dataset
 
-    :param split: Proportion of samples assigned to the validation set
-        from the training set
+    :param split: Proportion of samples assigned to the validation set from the training set
     :type split: Float
 
     :param seed: Fix to generate reproducible results, defaults to ``0``
@@ -106,15 +99,13 @@ def valid_split(ds_train, ds_val, split, seed=0):
 
     :return: Randomly split train and validation sets
     :rtype: list of torch.utils.data
-
     """
 
     n = len(ds_train)
     n_val = int(n * split)
     n_train = n - n_val
 
-    # Create an index list of length n_train, containing non-repeating
-    # values from 0 to n-1
+    # Create an index list of length n_train, containing non-repeating values from 0 to n-1
     rng = np.random.default_rng(seed=seed)
     train_idx = rng.choice(n, size=n_train, replace=False)
 
@@ -148,6 +139,7 @@ def reset(net):
     global is_leaky
     global is_lapicque
     global is_rleaky
+    global is_delta_leaky
     global is_synaptic
     global is_rsynaptic
     global is_sconv2dlstm
@@ -155,6 +147,7 @@ def reset(net):
 
     is_alpha = False
     is_leaky = False
+    is_delta_leaky = False
     is_rleaky = False
     is_synaptic = False
     is_rsynaptic = False
@@ -169,7 +162,7 @@ def reset(net):
 
 def _layer_check(net):
     """Check for the types of LIF neurons contained in net."""
-
+    global is_delta_leaky
     global is_leaky
     global is_lapicque
     global is_synaptic
@@ -186,6 +179,8 @@ def _layer_check(net):
             is_synaptic = True
         if isinstance(list(net._modules.values())[idx], snn.Leaky):
             is_leaky = True
+        if isinstance(list(net._modules.values())[idx], snn.Delta_Leaky):
+            is_delta_leaky = True
         if isinstance(list(net._modules.values())[idx], snn.Alpha):
             is_alpha = True
         if isinstance(list(net._modules.values())[idx], snn.RLeaky):
@@ -199,8 +194,7 @@ def _layer_check(net):
 
 
 def _layer_reset():
-    """Reset hidden parameters to zero and detach them from
-    the current computation graph."""
+    """Reset hidden parameters to zero and detach them from the current computation graph."""
 
     if is_lapicque:
         snn.Lapicque.reset_hidden()  # reset hidden state to 0's
@@ -226,6 +220,9 @@ def _layer_reset():
     if is_slstm:
         snn.SLSTM.reset_hidden()  # reset hidden state to 0's
         snn.SLSTM.detach_hidden()
+    if is_delta_leaky:
+        snn.Delta_Leaky.reset_hidden()  # reset hidden state to 0's
+        snn.Delta_Leaky.detach_hidden()
 
 
 def _final_layer_check(net):
@@ -239,6 +236,8 @@ def _final_layer_check(net):
         return 3
     if isinstance(list(net._modules.values())[-1], snn.Leaky):
         return 2
+    if isinstance(list(net._modules.values())[-1], snn.Delta_Leaky):
+        return 2
     if isinstance(list(net._modules.values())[-1], snn.RLeaky):
         return 2
     if isinstance(list(net._modules.values())[-1], snn.SConv2dLSTM):
@@ -249,4 +248,3 @@ def _final_layer_check(net):
         return 4
     else:  # if not from snn, assume from nn with 1 return
         return 1
-    
